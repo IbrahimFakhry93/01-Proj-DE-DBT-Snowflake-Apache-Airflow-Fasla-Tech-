@@ -13,6 +13,9 @@
 # BT39698
 
 
+#! snowflake website UI:
+# https://app.snowflake.com/fimnzvb/bt39698/#/homepage
+
 # * ==========================================================================================
 # & Creating Resources:
 
@@ -110,6 +113,7 @@
 
 #^ to create dbt project folder
 # dbt init snowflake_data_project
+from 00 Course Repo.dbt-env.lib.python3.11.site-packages.airflow.www.api.experimental.endpoints import test
 azure_uaenorth
 
 #^ to remove dbt project
@@ -196,3 +200,58 @@ USE ROLE ACCOUNTADMIN;
 
 #! Writing models in dbt:
 
+#^ create file: sources.yml inside models folder in snowflake data project
+
+#* sources of all data models
+#* it's useful also for data lineage (the track of data pth)
+
+#^ stages in dbt:
+#* stage is a middle place between raw data (unprocessed data) and data tables for analytics
+
+#* Cleaning of raw data (renaming columns, adding columns etc..) takes place in staging 
+
+#* analytics tables: contained joined tables or aggregated tables
+
+#^ create folder: staging inside models folder in snowflake data project
+#^ create:
+# stg_customers.sql
+# stg_orders.sql
+# stg_orders_items.sql
+# stg_products.sql
+
+#^ then in terminal:
+#* dbt run
+
+#* staging will be as views according to dbt_project.yml
+
+#^ go to sql worksheet on snowflake
+#* select * from stg_orders_items
+
+#*========================
+
+#^ create fact tables (joined tables) for analysis and reporting
+
+#^ create folder: marts inside models folder in snowflake data project
+# fct.daily_order_revenue.sql
+
+
+#*====================
+
+#^ testing
+#^ create file: snowflake_test.yml in tests folder in snowflake data project
+
+# dbt test
+
+# dbt docs generate
+
+#dbt docs serve --port 8088
+
+#^ check lineage graph
+
+
+#*========================================================
+#* 45:10
+#! Airflow Section
+
+#* dbt core doesn't have scheduling so we need airflow
+#* but dbt cloud has scheduling
