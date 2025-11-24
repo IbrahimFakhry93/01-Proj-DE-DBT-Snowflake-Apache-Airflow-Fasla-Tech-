@@ -1,3 +1,4 @@
+#
 #& 1. CRITICAL PREREQUISITES: Python Versions
 #? dbt and some dependencies (like maturin/Rust builds) are not fully stable on Python 3.12. Python 3.11 is the recommended version.
 
@@ -20,6 +21,9 @@
 
 #* Step 2: Create the venv using Python 3.11
    py -3.11 -m venv venv
+   
+   #! to remove the env
+   rm -rf venv
 
 #& 3. ACTIVATING THE ENVIRONMENT (Scripts vs bin)
 #? Windows venv → `Scripts` folder.  
@@ -39,6 +43,10 @@
 #* Verify Activation
    - Prompt shows `(venv)` prefix.
    - Run `python --version` → should show Python 3.11.x.
+   
+#& Deactivation:
+   deactivate
+#* only works after activation
 
 #& 4. INSTALLING DBT
 #? Upgrade pip/setuptools/wheel first to avoid build errors.
@@ -99,3 +107,17 @@
    deactivate
    rm -rf venv
    py -3.11 -m venv venv
+
+
+custom_postgres:
+  outputs:
+    dev:
+      dbname: destination_db
+      host: host.docker.internal
+      pass: secret
+      port: 5434
+      schema: public
+      threads: 1
+      type: postgres
+      user: postgres
+  target: dev

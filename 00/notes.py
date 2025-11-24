@@ -100,13 +100,20 @@
 # 8 make connection between dbt and snowflake why?
 # so can dbt observe the created databases and schemas on snowflake
 
-# hoe to connect?
+# how to connect to data base:
 # setup the adapter with the thing we want to connect to (snowflake in this case)
 
 # ^ go to vs code bash terminal
 # pip install dbt-core dbt-snowflake
+#^ uninstall
+# pip uninstall dbt-core dbt-snowflake
 
+#^ to create dbt project folder
 # dbt init snowflake_data_project
+azure_uaenorth
+
+#^ to remove dbt project
+# rm -rf snowflake_data_project
 
 #^ choose the number of snow flake database (ex. number: 1)
 
@@ -125,15 +132,30 @@ SELECT CURRENT_USER();
 # CURRENT_USER() → returns the username of the current session.
 
 #^ enter in vs code terminal this:
-# account identifier.current region.cloud provider when signup on snowflake (azure)
+# account: lower account no.current region.cloud provider when signup on snowflake (azure)
 # enter username
+
+azure_uaenorth
 
 #! User Creation and Credentials Granting:
 
-# CREATE USER dbt_user
-#   PASSWORD = 'dbt_password'
-#   LOGIN_NAME = 'dbt_user'
-#   MUST_CHANGE_PASSWORD = FALSE;
+#^ create new user for dbt
+CREATE USER dbt_user
+  PASSWORD = 'dbt_password'
+  LOGIN_NAME = 'dbt_user'
+  DEFAULT_ROLE = ACCOUNTADMIN
+  MUST_CHANGE_PASSWORD = FALSE;
+ 
+#? note:
+#~ By default, new users are automatically granted the PUBLIC role.
+#* Setting DEFAULT_ROLE doesn’t automatically grant the role — you must explicitly grant it. 
+GRANT ROLE ACCOUNTADMIN TO USER dbt_user;
+
+#^ Show granted roles
+SHOW GRANTS TO USER dbt_user;
+
+#? or switch explicitly roles in a session 
+USE ROLE ACCOUNTADMIN;
 
 #^ -- Grant access to database
 # GRANT USAGE ON DATABASE finance_db TO ROLE ACCOUNTADMIN;
@@ -152,7 +174,25 @@ SELECT CURRENT_USER();
 #* enter number of threads: 4
 
 #^ test connection:
+#* open in terminal: the directory of snowflake_data_project
 #* dbt debug
+
+#^ to navigate to profile.yaml:
+#* C:\Users\Ibrahim-Fakhry\.dbt
+#~ or:
+# dbt debug --config-dir
+#* To view your profiles.yml file, run:
+#* open /Users/alice/.dbt
+
+#? Best practice
+#^ It’s not recommended to give dbt_user the powerful ACCOUNTADMIN role in production. Instead:
+
+#* Create a custom role (e.g. DBT_ROLE).
+
+#* Grant only the privileges dbt needs (USAGE on warehouse, database, schema; SELECT/INSERT/UPDATE/DELETE on tables).
+
+#* Assign DBT_ROLE as the default role for dbt_user.
+
 
 #! Writing models in dbt:
 
