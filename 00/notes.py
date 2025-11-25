@@ -270,11 +270,19 @@ DESCRIBE VIEW raw.stg_customers;
 #^ go to sql worksheet on snowflake
 #* select * from stg_orders_items
 
+#^ some commands to run in case of some config problems:
+Clear cache
+Sometimes dbt caches manifests. Run:
+# dbt clean
+# dbt deps
+
 #*========================
+
+#? Analytics:
 
 #^ create fact tables (joined tables) for analysis and reporting
 
-#^ create folder: marts inside models folder in snowflake data project
+#^ create folder: marts (for joins and aggregation) inside models folder in snowflake data project
 # fct.daily_order_revenue.sql
 
 
