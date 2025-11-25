@@ -197,32 +197,75 @@ USE ROLE ACCOUNTADMIN;
 
 #* Assign DBT_ROLE as the default role for dbt_user.
 
-
+#*===========================================================================================================
 #! Writing models in dbt:
+
+#* how to write models, how to clean our data, how to make aggregation, sum and test using dbt
+#* our so far sequence:on snowflake, we created warehouse -> created database -> created schema-> under schema we created four tables
+#* dbt needs to understand this structure or sequence , how?
+
+#* we create file contains our sources: database name, used schema, used tables
+#* any source of data will be placed in sources file
 
 #^ create file: sources.yml inside models folder in snowflake data project
 
+#* sources.yml is useful as it's one source of truth
+#* if we changed database or schema, we need to change only this file
+
 #* sources of all data models
-#* it's useful also for data lineage (the track of data pth)
+#* it's useful also for data lineage (the track of data path)
+#* to every step of a data, what was the data source at this step
+
+#^ next step: observe your data on snowflake to decide how the cleaning will be
+#^ go to snowflake worksheet:
+select * from customers;          #* change id to customer_id
+select * from orders;             #* change id to order_id, change status to order_status
+select * from order_items;        #* add column: total price  
+select * from products;           #* change id to product_id, product_name etc..
+
 
 #^ stages in dbt:
 #* stage is a middle place between raw data (unprocessed data) and data tables for analytics
 
+#* stage is for cleaning the data
 #* Cleaning of raw data (renaming columns, adding columns etc..) takes place in staging 
 
-#* analytics tables: contained joined tables or aggregated tables
+#* analytics tables: contained joined tables or aggregated tables (complex queries in general)
 
 #^ create folder: staging inside models folder in snowflake data project
-#^ create:
-# stg_customers.sql
+#^ create staging models: each model contains the required changes to be applied on each table
+# stg_customers.sql 
 # stg_orders.sql
 # stg_orders_items.sql
 # stg_products.sql
+
+#^ open: stg_customers.sql
+# SELECT id AS customer_id, name AS customer_name,email,country FROM {{source('raw_data','customers')}}
+# in dbt, statement is not hard coded (static) as finance_db.raw.customers
+# It's useful when changing database or when switching environment among development, testing, production
+
+#^ Check if dbt sees the source
+# dbt ls --resource-type source
+
+#^ Preview compiled SQL
+# dbt compile --select stg_customers
+
+#^ See the final SQL that dbt sends to Snowflake — no Jinja, just raw SQL.
+# target/compiled/snowflake_data_project/models/staging/stg_orders.sql
+
 
 #^ then in terminal:
 #* dbt run
 
 #* staging will be as views according to dbt_project.yml
+
+#^ show views on snowflake
+USE DATABASE finance_db;
+USE SCHEMA raw;
+SHOW VIEWS;
+
+#^ shows the columns and their types.
+DESCRIBE VIEW raw.stg_customers;
 
 #^ go to sql worksheet on snowflake
 #* select * from stg_orders_items
