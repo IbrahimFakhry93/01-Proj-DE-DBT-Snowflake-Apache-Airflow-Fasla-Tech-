@@ -16,6 +16,14 @@
 #! snowflake website UI:
 # https://app.snowflake.com/fimnzvb/bt39698/#/homepage
 
+#! Airflow UI:
+# http://localhost:8080
+
+#! airflow kiwi:
+# 2.8.3
+
+# Airflow officially supports Python 3.8–3.11.
+
 # * ==========================================================================================
 # & Creating Resources:
 
@@ -295,14 +303,213 @@ Sometimes dbt caches manifests. Run:
 
 # dbt docs generate
 
-#dbt docs serve --port 8088
+# dbt docs serve --port 8088
 
 #^ check lineage graph
 
 
-#*========================================================
+#*===================================================================
 #* 45:10
 #! Airflow Section
 
-#* dbt core doesn't have scheduling so we need airflow
+#* dbt core doesn't have scheduling so we need airflow to execute jobs and models in a certain schedule
 #* but dbt cloud has scheduling
+
+#* first drop pre-created views on snowflake so we make sure they will be created again by airflow
+DROP VIEW STG_ORDER_ITEMS;
+DROP VIEW STG_CUSTOMERS;
+DROP VIEW STG_ORDERS;
+DROP VIEW STG_PRODUCTS;
+
+#^ install apache airflow
+
+pip install apache-airflow
+
+#~^ install provider so airflow can deal with snowflake
+pip install apache-airflow-providers-snowflake  #* If using Snowflake
+
+#! if encounter this error:
+#! ERROR: Could not install packages due to an OSError: [WinError 5] 
+# Access is denied: 'C:\\1Programming\\01 Data Engineer\\01 Fesla Tech\\01 DE Projects\\01 Proj DE, DBT,
+# Snowflake & Apache Airflow\\01 My Project\\venv\\Lib\\site-packages\\google\\~upb\\_message.pyd' Check the permissions.
+
+#? solution:
+#~ Fixing WinError 5 during pip install (Airflow Snowflake provider)
+
+#* This error means Windows blocked access to a file inside your virtual environment during the install — specifically:
+#! Access is denied: '...\\venv\\Lib\\site-packages\\google\\~upb\\_message.pyd'
+# That’s a compiled binary used by protobuf
+
+#?Note: Windows blocks access to certain .pyd files if they're in use or lack admin rights.
+#  This error usually happens inside virtual environments during package upgrades.
+#  The file in question was '_message.pyd' from the protobuf package.
+
+#~ Step 1: Close all Python-related processes
+#  Use Task Manager (Ctrl + Shift + Esc) → End any 'python.exe' or 'airflow.exe'
+
+#~ Step 2: Run terminal as Administrator
+#  Right-click VS Code or Git Bash → "Run as administrator"
+#  Then activate your virtual environment:
+source venv/Scripts/activate  # Git Bash
+.\venv\Scripts\activate       # PowerShell
+
+#~ Step 3: Retry the install
+pip install apache-airflow-providers-snowflake
+
+#~ Step 4: If error persists, manually delete the locked file
+#  Navigate to:
+#    C:\1Programming\...\venv\Lib\site-packages\google\
+#  Delete '_message.pyd'
+#  Then rerun the install command.
+
+#~ Why this works:
+#  Windows locks compiled binaries (.pyd) during runtime.
+#  Admin rights + file unlock resolves permission errors.
+
+#~ Optional: Clean reinstall (if issues persist)
+#  Delete and recreate your virtual environment:
+rm -r venv
+python -m venv venv
+source venv/Scripts/activate
+pip install -r requirements.txt
+
+
+#================================================
+
+#^ sets the environment variable AIRFLOW_HOME to point to ~/airflow, 
+#^ which tells Airflow where to store its config, logs, and metadata DB.
+export AIRFLOW_HOME=~/airflow
+
+#* export → defines a shell environment variable.
+#* AIRFLOW_HOME → the variable Airflow uses to locate its working directory.
+#* ~/airflow → sets the directory to a folder named airflow inside your home directory.
+
+#~ Why it matters
+#* By default, Airflow uses ~/airflow unless you override it. Setting AIRFLOW_HOME explicitly
+#* Ensures consistency across sessions and scripts.
+#* Lets you isolate multiple Airflow setups (e.g., dev vs prod).
+#* Avoids cluttering your home directory if you want to relocate Airflow elsewhere.
+
+#^ Initialize airflow: launch the database initially for airflow
+airflow db init
+
+#^ create folder dags inside airflow 
+
+mkdir -p ~/airflow/dags
+# mkdir -p → creates the ~/airflow/dags directory (including parent folders if missing).
+
+#^ note:
+# The ~ symbol means your home directory — it's a shortcut used in Unix-like shells (like Bash, zsh, WSL, Git Bash).
+# On Git Bash (Windows): C:\Users\your-username
+
+nano ~/airflow/dags/dbt_dag.py
+# nano → opens the file dbt_dag.py in the nano text editor
+
+#^ copy and paste in the terminal this: 
+from airflow import DAG
+from airflow.operators.bash import BashOperator
+from datetime import datetime, timedelta
+
+# Define default arguments for the DAG
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'start_date': datetime(2024, 2, 25),  # Change as needed
+    'retries': 1,
+    'retry_delay': timedelta(minutes=5),
+}
+
+# Define the DAG
+dag = DAG(
+    'dbt_snowflake_pipeline',
+    default_args=default_args,
+    description='Run dbt models using dbt Core',
+    schedule_interval='@daily',  # Run daily
+    catchup=False,
+)
+
+# Define the path to your dbt project
+DBT_PROJECT_DIR = r"C:\1Programming\01 Data Engineer\01 Fesla Tech\01 DE Projects\01 Proj DE, DBT, Snowflake & Apache Airflow\01 My Project\snowflake_data_project"
+
+# Task 1: Run dbt models
+dbt_run = BashOperator(
+    task_id='dbt_run',
+    bash_command=f'cd "{DBT_PROJECT_DIR}" && dbt run',
+    dag=dag,
+)
+
+# Task 2: Run dbt tests after models are built
+dbt_test = BashOperator(
+    task_id='dbt_test',
+    bash_command=f'cd "{DBT_PROJECT_DIR}" && dbt test',
+    dag=dag,
+)
+
+# Define task dependencies
+dbt_run >> dbt_test  # dbt_run must finish before dbt_test starts
+
+
+#^ then click: ctrl + x , then press y then enter
+
+#^ launch the scheduler and webserver
+airflow scheduler &
+airflow webserver &
+
+
+#^ go to airflow UI
+# http://localhost:8080
+
+#^ Find your DAG: dbt_snowflake_pipeline
+#^ select dbt_snowflake_pipeline
+# Pause → then trigger it manually (unpause will rerun the dag automatically)
+
+#^ go to snowflake
+# observe the created views 
+
+# You should see views created by dbt inside your Snowflake project.
+# This confirms Airflow successfully ran dbt run and dbt test.
+
+#^ so by that: we used airflow to run dbt and create the models
+
+
+# Create a default Unix user account: ibrahim-fakhry
+# bebokepeer93
+
+#& Update WSL on Windows 11
+
+#? Step 1: Open PowerShell as Administrator
+#* Press Win + S → type "PowerShell"
+#* Right‑click → "Run as administrator"
+
+#? Step 2: Update WSL
+#* wsl --update        # installs the latest WSL version (WSL 2)
+
+#? Step 3: Restart your computer
+#* Required for changes to take effect
+
+#? Step 4: Verify installation
+#* wsl --version       # shows current WSL version
+#* wsl --list --online # lists available Linux distros you can install
+
+#? Step 5: (Optional) Install Ubuntu for testing
+#* wsl --install -d Ubuntu
+
+# Docker Desktop on Windows 11 uses WSL 2 as its backend.
+
+
+
+# \\wsl$\Ubuntu\home\Ibrahim-Fakhry\airflow_project
+
+
+
+airflow users create \
+  --username ibrahim9316 \
+  --firstname Ibrahim \
+  --lastname Fakhry \
+  --role Admin \
+  --email ibrahim.fakhry93@yahoo.com \
+  --password bebokepeer93
+  
+  cat ~/airflow/simple_auth_manager_passwords.json.generated
+
+ Login with username: admin  password: u5qysrxpNRSv9fhe
